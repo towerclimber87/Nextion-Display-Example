@@ -1,0 +1,87 @@
+wifi:
+  ssid: "yourssid"
+  password: "yourpassowrd"  
+  reboot_timeout: 0s
+
+
+
+
+logger:
+esphome:
+  name: test-screen
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino
+api:  
+  
+ota:
+
+
+uart:
+  id: uart_1
+  rx_pin: TX
+  tx_pin: RX
+  baud_rate: 115200
+
+display:
+  - platform: nextion
+    id: nextion1
+    uart_id: uart_1
+    touch_sleep_timeout: 2700
+    auto_wake_on_touch: true
+    update_interval: 700ms
+
+           
+sensor:
+  - platform: nextion
+    id: current_page
+    name: current page
+    variable_name: dp
+    update_interval: 1s
+    on_value: 
+     - lambda: if (id(current_page).state == 0.00) {id(test_script).execute();}
+                   
+
+binary_sensor:   
+  - platform: status
+    id: online 
+
+  - platform: homeassistant
+    entity_id: switch.coffee
+    id: coffee_status
+    name: Coffee Status
+
+  - platform: nextion
+    page_id: 0
+    component_id: 3
+    name: Button
+    update_interval: 500ms
+    id: test_coffee
+    variable_name: "0"  
+    on_press:      
+      then:
+      - if:
+          condition:
+            for:
+              time: 1s
+              condition:
+                - lambda: 'return id(current_page).state == 0.00;'  
+                - binary_sensor.is_on: online   
+          then:         
+            - homeassistant.service:
+                service: switch.toggle
+                data_template:
+                    entity_id: switch.coffee
+            - delay: 1s
+            - lambda: if (id(current_page).state == 0.00) {id(test_script).execute();}
+
+
+
+
+script:                
+  - id: test_script
+    then:
+     - lambda: if (id(coffee_status).state == true && id(current_page).state == 0.00) {
+               id(nextion1).set_component_value("Coffe", 0);
+             } else { id(nextion1).set_component_value("Coffe", 1);}        
